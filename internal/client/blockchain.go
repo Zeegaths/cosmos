@@ -1057,3 +1057,203 @@ func (c *BlockchainClient) ListAdmins() []string {
     
 //     return true
 // }
+
+// Token distribution related functions
+type TokenDistribution struct {
+    FromAddress string
+    ToAddress   string
+    Amount      string
+    Denom       string
+    TxHash      string
+}
+
+func (c *BlockchainClient) DistributeTokens(task intTypes.Task) error {
+    // Mock version
+    log.Printf("Mock: Distributing %s microSERVDR tokens to %s for task %s", 
+        task.Bounty, task.Claimer, task.ID)
+    return nil
+
+    /* Real blockchain version (commented out)
+    // Create token transfer message
+    msg := map[string]interface{}{
+        "@type": "/cosmos.bank.v1beta1.MsgSend",
+        "from_address": c.GetEscrowAddress(),  // Task bounty is held in escrow
+        "to_address": task.Claimer,
+        "amount": []map[string]string{
+            {
+                "denom": "microSERVDR",
+                "amount": task.Bounty,
+            },
+        },
+    }
+
+    // Add distribution metadata
+    metadata := map[string]interface{}{
+        "type": "token_distribution",
+        "task_id": task.ID,
+        "distribution_type": "task_completion",
+    }
+
+    metadataBytes, err := json.Marshal(metadata)
+    if err != nil {
+        return fmt.Errorf("failed to marshal metadata: %v", err)
+    }
+
+    // Create and sign transaction
+    tx := Transaction{
+        Body: TxBody{
+            Messages: []json.RawMessage{msgBytes},
+            Memo: string(metadataBytes),
+            TimeoutHeight: uint64(time.Now().Unix() + 300),
+        },
+        AuthInfo: AuthInfo{
+            SignerInfos: []SignerInfo{
+                {
+                    PublicKey: PublicKey{
+                        Type: "/cosmos.crypto.secp256k1.PubKey",
+                        Key: c.walletKeys[c.GetEscrowAddress()].PubKey,
+                    },
+                    ModeInfo: ModeInfo{
+                        Single: Single{
+                            Mode: "SIGN_MODE_DIRECT",
+                        },
+                    },
+                    Sequence: "0",
+                },
+            },
+            Fee: Fee{
+                Amount: []Coin{
+                    {
+                        Denom: "microSERVDR",
+                        Amount: "1000",
+                    },
+                },
+                GasLimit: 200000,
+            },
+        },
+        Signatures: make([]string, 0),
+    }
+
+    return c.submitTransaction(txBytes)
+    */
+}
+
+func (c *BlockchainClient) GetEscrowAddress() string {
+    // For mock mode, return a constant address
+    return "serv1escrow000000000000000000000000000000"
+
+    /* Real blockchain version (commented out)
+    // Generate deterministic escrow address
+    hasher := sha256.New()
+    hasher.Write([]byte("escrow"))
+    hash := hasher.Sum(nil)
+    addr := sdk.AccAddress(hash[:20])
+    return addr.String()
+    */
+}
+
+func (c *BlockchainClient) LockTaskBounty(task intTypes.Task) error {
+    // Mock version
+    log.Printf("Mock: Locking %s microSERVDR tokens from %s in escrow for task %s", 
+        task.Bounty, task.Creator, task.ID)
+    return nil
+
+    /* Real blockchain version (commented out)
+    // Transfer tokens to escrow
+    msg := map[string]interface{}{
+        "@type": "/cosmos.bank.v1beta1.MsgSend",
+        "from_address": task.Creator,
+        "to_address": c.GetEscrowAddress(),
+        "amount": []map[string]string{
+            {
+                "denom": "microSERVDR",
+                "amount": task.Bounty,
+            },
+        },
+    }
+
+    metadata := map[string]interface{}{
+        "type": "lock_bounty",
+        "task_id": task.ID,
+    }
+
+    // Create and submit transaction...
+    */
+}
+
+func (c *BlockchainClient) GetTokenBalance(address string) (string, error) {
+    // Mock version
+    return "1000000", nil
+
+    /* Real blockchain version (commented out)
+    url := fmt.Sprintf("%s/cosmos/bank/v1beta1/balances/%s", c.restEndpoint, address)
+    resp, err := http.Get(url)
+    if err != nil {
+        return "", fmt.Errorf("failed to get balance: %v", err)
+    }
+    defer resp.Body.Close()
+
+    var response struct {
+        Balances []struct {
+            Denom  string `json:"denom"`
+            Amount string `json:"amount"`
+        } `json:"balances"`
+    }
+
+    if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+        return "", fmt.Errorf("failed to decode response: %v", err)
+    }
+
+    for _, balance := range response.Balances {
+        if balance.Denom == "microSERVDR" {
+            return balance.Amount, nil
+        }
+    }
+
+    return "0", nil
+    */
+}
+
+// Update ApproveTask to include token distribution
+// func (c *BlockchainClient) ApproveTask(task intTypes.Task, approver string) error {
+//     if !c.IsAdmin(approver) {
+//         return fmt.Errorf("only admins can approve tasks")
+//     }
+    
+//     existingTask, exists := c.tasks[task.ID]
+//     if !exists {
+//         return fmt.Errorf("task not found")
+//     }
+    
+//     if existingTask.Status != "CLAIMED" {
+//         return fmt.Errorf("task must be claimed before approval")
+//     }
+
+//     // Distribute tokens to claimer
+//     if err := c.DistributeTokens(existingTask); err != nil {
+//         return fmt.Errorf("failed to distribute tokens: %v", err)
+//     }
+    
+//     existingTask.Status = "COMPLETED"
+//     c.tasks[task.ID] = existingTask
+    
+//     log.Printf("Task %s approved by admin %s and tokens distributed", task.ID, approver)
+//     return nil
+// }
+
+// // Update CreateTask to include bounty locking
+// func (c *BlockchainClient) CreateTask(task intTypes.Task) error {
+//     if task.ID == "" || task.Title == "" || task.Bounty == "" {
+//         return fmt.Errorf("invalid task parameters")
+//     }
+
+//     // Lock bounty in escrow
+//     if err := c.LockTaskBounty(task); err != nil {
+//         return fmt.Errorf("failed to lock bounty: %v", err)
+//     }
+    
+//     // Store task in memory
+//     c.tasks[task.ID] = task
+//     log.Printf("Created task: %+v and locked bounty", task)
+//     return nil
+// }

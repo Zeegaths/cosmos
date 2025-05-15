@@ -10,3 +10,5 @@ type Task struct {
     Claimer     string `json:"claimer,omitempty"`
     Proof       string `json:"proof,omitempty"`
 }
+
+
